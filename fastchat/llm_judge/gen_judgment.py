@@ -138,6 +138,7 @@ def make_judge_pairwise(judge_model, judge_prompts):
     judges = {}
     judges["default"] = Judge(judge_model, judge_prompts["pair-v2"])
     judges["math"] = Judge(judge_model, judge_prompts["pair-math-v1"], ref_based=True)
+    judges["simple"] = Judge(judge_model, judge_prompts["pair-simplicity"])
     judges["default-mt"] = Judge(
         judge_model, judge_prompts["pair-v2-multi-turn"], multi_turn=True
     )
@@ -147,6 +148,12 @@ def make_judge_pairwise(judge_model, judge_prompts):
         ref_based=True,
         multi_turn=True,
     )
+    judges["simple-mt"] = Judge(
+        judge_model,
+        judge_prompts["pair-simplicity-multi-turn"],
+        ref_based=True,
+        multi_turn=True,
+    )      
     return judges
 
 
@@ -154,6 +161,7 @@ def make_judge_single(judge_model, judge_prompts):
     judges = {}
     judges["default"] = Judge(judge_model, judge_prompts["single-v1"])
     judges["math"] = Judge(judge_model, judge_prompts["single-math-v1"], ref_based=True)
+    judges["simple"] = Judge(judge_model, judge_prompts["single-simplicity"])
     judges["default-mt"] = Judge(
         judge_model, judge_prompts["single-v1-multi-turn"], multi_turn=True
     )
@@ -163,6 +171,12 @@ def make_judge_single(judge_model, judge_prompts):
         ref_based=True,
         multi_turn=True,
     )
+    judges["simple-mt"] = Judge(
+        judge_model,
+        judge_prompts["single-simplicity-multi-turn"],
+        ref_based=True,
+        multi_turn=True,
+    )        
     return judges
 
 
@@ -254,13 +268,21 @@ if __name__ == "__main__":
 
     check_data(questions, model_answers, ref_answers, models, judges)
 
-    question_math = [q for q in questions if q["category"] in NEED_REF_CATS]
-    question_default = [q for q in questions if q["category"] not in NEED_REF_CATS]
+    if not args.bench_name == "mts_bench":
+        question_math = [q for q in questions if q["category"] in NEED_REF_CATS]
+        question_default = [q for q in questions if q["category"] not in NEED_REF_CATS]
+        judge_default = judges["default"]
+        judge_default_mt = judges["default-mt"]
+    else:
+        question_math = []
+        question_default = questions
+        judge_default = judges["simple"]
+        judge_default_mt = judges["simple-mt"]
 
     # Make matches
     matches = []
     matches += make_match_func(
-        question_default, models, model_answers, judges["default"], baseline_model
+        question_default, models, model_answers, judge_default, baseline_model
     )
     matches += make_match_func(
         question_math,
@@ -274,7 +296,7 @@ if __name__ == "__main__":
         question_default,
         models,
         model_answers,
-        judges["default-mt"],
+        judge_default_mt,
         baseline_model,
         multi_turn=True,
     )
@@ -287,7 +309,7 @@ if __name__ == "__main__":
         ref_answers,
         multi_turn=True,
     )
-
+        
     match_stat = {}
     match_stat["bench_name"] = args.bench_name
     match_stat["mode"] = args.mode
